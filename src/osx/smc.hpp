@@ -18,6 +18,7 @@ tab-size = 4
 
 #pragma once
 
+#ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/ps/IOPSKeys.h>
@@ -117,3 +118,4 @@ namespace Cpu {
 		io_object_t device;
 	};
 }  // namespace Cpu
+#endif // __APPLE__

@@ -1,5 +1,7 @@
 name: FreeBSD CMake
 
+permissions: {}
+
 on:
   workflow_dispatch:
   push:
@@ -12,6 +14,7 @@ on:
       - 'include/**'
       - 'src/*pp'
       - 'src/freebsd/*pp'
+      - 'tests/**'
   pull_request:
     branches: main
     paths:
@@ -21,6 +24,7 @@ on:
       - 'include/**'
       - 'src/*pp'
       - 'src/freebsd/*pp'
+      - 'tests/**'
 
 jobs:
   build:
@@ -32,12 +36,14 @@ jobs:
     strategy:
       matrix:
         arch: ['aarch64', 'x86_64']
-        version: ['14.3', '15.0']
+        version: ['14.4', '15.1']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Compile
-        uses: vmactions/freebsd-vm@v1
+        uses: vmactions/freebsd-vm@5a72679103d223925653750faa878a143340fbd0 # v1.5.0
         with:
           arch: ${{ matrix.arch }}
           release: ${{ matrix.version }}

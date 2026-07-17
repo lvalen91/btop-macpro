@@ -1,5 +1,7 @@
 name: Continuous Build Gpu
 
+permissions: {}
+
 on:
   workflow_dispatch:
   push:
@@ -29,19 +31,21 @@ on:
       - 'Makefile'
       - '.github/workflows/continuous-build-gpu.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gpu_build_linux:
     runs-on: ubuntu-24.04
     container: alpine:edge
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-      cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Install build tools
         run: apk add --no-cache --update gcc g++ make linux-headers
 
       - name: Compile
         run: make CXX=g++ GPU_SUPPORT=true
-
