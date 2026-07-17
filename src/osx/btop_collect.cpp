@@ -1067,6 +1067,7 @@ namespace Cpu {
 	struct SensorResult {
 		long long package_temp{};
 		std::vector<long long> core_temps;
+		double cpu_power{-1.0};
 		bool valid{false};
 	};
 
@@ -1085,6 +1086,9 @@ namespace Cpu {
 				result.package_temp = smcCon.getTemp(-1);
 				for (int core = 0; core < Shared::coreCount; core++) {
 					result.core_temps.push_back(smcCon.getTemp((core / threadsPerCore) + core_offset));
+				}
+				if (supports_watts) {
+					result.cpu_power = smcCon.getCpuPower();
 				}
 				result.valid = true;
 			}
@@ -1128,11 +1132,10 @@ namespace Cpu {
 							current_cpu.temp.at(core + 1).pop_front();
 					}
 				}
-				if (supports_watts) {
-					double w = smcCon.getCpuPower();
-					if (w >= 0.0) current_cpu.usage_watts = static_cast<float>(w);
-				}
 			}
+
+			if (supports_watts and last_result.cpu_power >= 0.0)
+				current_cpu.usage_watts = static_cast<float>(last_result.cpu_power);
 		}
 
 		sensor_future = std::async(std::launch::async, collect_sensors);
