@@ -1,3 +1,14 @@
+<!-- ATTRIBUTION -->
+> ## btop-macpro
+>
+> A standalone variant of **btop++** tuned specifically for the **2019 Mac Pro (`MacPro7,1`)** — Intel Xeon W CPU and AMD Radeon Pro W6900X GPU, macOS x86_64.
+>
+> **Derived from [aristocratos/btop](https://github.com/aristocratos/btop)** (synced through upstream **v1.4.7**), licensed under **Apache-2.0** — see [`LICENSE`](LICENSE); upstream copyright is retained and the full commit history is preserved in this repository's `git log`.
+>
+> Changes in this variant: Xeon package wattage and temperature via SMC (with a `TCXc` die-sensor fallback for Macs that expose no per-core keys), and AMD GPU support on Intel Macs. **Maintained independently — this repository no longer tracks upstream.** For the original cross-platform btop, use [aristocratos/btop](https://github.com/aristocratos/btop).
+
+---
+
 # ![btop++](Img/logo.png)
 
 <a href="https://repology.org/project/btop/versions">
