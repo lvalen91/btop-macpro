@@ -38,10 +38,6 @@ tab-size = 4
 #include <ifaddrs.h>
 // clang-format on
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-# include <kvm.h>
-#endif
-
 using std::array;
 using std::atomic;
 using std::deque;
@@ -97,15 +93,6 @@ namespace Shared {
 	void init();
 
 	extern long coreCount, page_size, clk_tck;
-
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-	struct KvmDeleter {
-		void operator()(kvm_t* handle) {
-			kvm_close(handle);
-		}
-	};
-	using KvmPtr = std::unique_ptr<kvm_t, KvmDeleter>;
-#endif
 }
 
 #if defined(GPU_SUPPORT)
@@ -181,19 +168,7 @@ namespace Gpu {
 		// vector<proc_info> compute_processes = {};
 	};
 
-	namespace Nvml {
-		extern bool shutdown();
-	}
-	namespace Rsmi {
-		extern bool shutdown();
-	}
-	namespace Asysfs {
-		extern bool shutdown();
-	}
 	#ifdef __APPLE__
-	namespace AppleSilicon {
-		extern bool shutdown();
-	}
 	namespace AppleAMD {
 		extern bool shutdown();
 	}

@@ -63,54 +63,6 @@ namespace Menu {
 
    const array<string, 32> P_Signals = {
 	   "0",
-#ifdef __linux__
-#if defined(__hppa__)
-		"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
-		"SIGTRAP", "SIGABRT", "SIGSTKFLT", "SIGFPE",
-		"SIGKILL", "SIGBUS", "SIGSEGV", "SIGXCPU",
-		"SIGPIPE", "SIGALRM", "SIGTERM", "SIGUSR1",
-		"SIGUSR2", "SIGCHLD", "SIGPWR", "SIGVTALRM",
-		"SIGPROF", "SIGIO", "SIGWINCH", "SIGSTOP",
-		"SIGTSTP", "SIGCONT", "SIGTTIN", "SIGTTOU",
-		"SIGURG", "SIGXFSZ", "SIGSYS"
-#elif defined(__mips__)
-		"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
-		"SIGTRAP", "SIGABRT", "SIGEMT", "SIGFPE",
-		"SIGKILL", "SIGBUS", "SIGSEGV", "SIGSYS",
-		"SIGPIPE", "SIGALRM", "SIGTERM", "SIGUSR1",
-		"SIGUSR2", "SIGCHLD", "SIGPWR", "SIGWINCH",
-		"SIGURG", "SIGIO", "SIGSTOP", "SIGTSTP",
-		"SIGCONT", "SIGTTIN", "SIGTTOU", "SIGVTALRM",
-		"SIGPROF", "SIGXCPU", "SIGXFSZ"
-#elif defined(__alpha__)
-		"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
-		"SIGTRAP", "SIGABRT", "SIGEMT", "SIGFPE",
-		"SIGKILL", "SIGBUS", "SIGSEGV", "SIGSYS",
-		"SIGPIPE", "SIGALRM", "SIGTERM", "SIGURG",
-		"SIGSTOP", "SIGTSTP", "SIGCONT", "SIGCHLD",
-		"SIGTTIN", "SIGTTOU", "SIGIO", "SIGXCPU",
-		"SIGXFSZ", "SIGVTALRM", "SIGPROF", "SIGWINCH",
-		"SIGPWR", "SIGUSR1", "SIGUSR2"
-#elif defined (__sparc__)
-		"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
-		"SIGTRAP", "SIGABRT", "SIGEMT", "SIGFPE",
-		"SIGKILL", "SIGBUS", "SIGSEGV", "SIGSYS",
-		"SIGPIPE", "SIGALRM", "SIGTERM", "SIGURG",
-		"SIGSTOP", "SIGTSTP", "SIGCONT", "SIGCHLD",
-		"SIGTTIN", "SIGTTOU", "SIGIO", "SIGXCPU",
-		"SIGXFSZ", "SIGVTALRM", "SIGPROF", "SIGWINCH",
-		"SIGLOST", "SIGUSR1", "SIGUSR2"
-#else
-		"SIGHUP", "SIGINT",	"SIGQUIT",	"SIGILL",
-		"SIGTRAP", "SIGABRT", "SIGBUS", "SIGFPE",
-		"SIGKILL", "SIGUSR1", "SIGSEGV", "SIGUSR2",
-		"SIGPIPE", "SIGALRM", "SIGTERM", "SIGSTKFLT",
-		"SIGCHLD", "SIGCONT", "SIGSTOP", "SIGTSTP",
-		"SIGTTIN", "SIGTTOU", "SIGURG", "SIGXCPU",
-		"SIGXFSZ", "SIGVTALRM", "SIGPROF", "SIGWINCH",
-		"SIGIO", "SIGPWR", "SIGSYS"
-#endif
-#elif defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__APPLE__)
 		"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
 		"SIGTRAP", "SIGABRT", "SIGEMT", "SIGFPE",
 		"SIGKILL", "SIGBUS", "SIGSEGV", "SIGSYS",
@@ -119,16 +71,6 @@ namespace Menu {
 		"SIGTTIN", "SIGTTOU", "SIGIO", "SIGXCPU",
 		"SIGXFSZ", "SIGVTALRM", "SIGPROF", "SIGWINCH",
 		"SIGINFO", "SIGUSR1", "SIGUSR2"
-#else
-		"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL",
-		"SIGTRAP", "SIGABRT", "7", "SIGFPE",
-		"SIGKILL", "10", "SIGSEGV", "12",
-		"SIGPIPE", "SIGALRM", "SIGTERM", "16",
-		"17", "18", "19", "20",
-		"21", "22", "23", "24",
-		"25", "26", "27", "28",
-		"29", "30", "31"
-#endif
 	};
 
   std::unordered_map<string, Input::Mouse_loc> mouse_mappings;
@@ -539,22 +481,6 @@ namespace Menu {
 				"",
 				"Can cause slowdowns on systems with many",
 				"cores and certain kernel versions."},
-		#ifdef __linux__
-			{"freq_mode",
-				"How the CPU frequency will be displayed.",
-				"",
-				"First, get the frequency from the first",
-				"core.",
-				"",
-				"Range, show the lowest and the highest",
-				"frequency.",
-				"",
-				"Lowest, the lowest frequency.",
-				"",
-				"Highest, the highest frequency.",
-				"",
-				"Average, sum and divide."},
-		#endif
 			{"custom_cpu_name",
 				"Custom cpu model name in cpu percentage box.",
 				"",
@@ -1316,9 +1242,6 @@ static int optionsMenu(const string& key) {
 			{"color_theme", std::cref(Theme::themes)},
 			{"log_level", std::cref(Logger::log_levels)},
 			{"temp_scale", std::cref(Config::temp_scales)},
-		#ifdef __linux__
-			{"freq_mode", std::cref(Config::freq_modes)},
-		#endif
 			{"proc_sorting", std::cref(Proc::sort_vector)},
 			{"graph_symbol", std::cref(Config::valid_graph_symbols)},
 			{"graph_symbol_cpu", std::cref(Config::valid_graph_symbols_def)},
@@ -1471,11 +1394,7 @@ static int optionsMenu(const string& key) {
 			if (--selected_cat < 0) selected_cat = (int)categories.size() - 1;
 			page = selected = 0;
 		}
-#ifdef GPU_SUPPORT
 		else if (is_in(key, "1", "2", "3", "4", "5", "6") or key.starts_with("select_cat_")) {
-#else
-		else if (is_in(key, "1", "2", "3", "4", "5") or key.starts_with("select_cat_")) {
-#endif
 		selected_cat = key.back() - '0' - 1;
 			page = selected = 0;
 		}
@@ -1502,11 +1421,7 @@ static int optionsMenu(const string& key) {
 					theme_refresh = true;
 					Config::flip("lowcolor");
 				}
-			#if !defined(__APPLE__) && !defined(__OpenBSD__) && !defined(__NetBSD__)
-				else if (option == "force_tty" and not Term::current_tty.starts_with("/dev/tty")) {
-			#else
 				else if (option == "force_tty") {
-			#endif
 					theme_refresh = true;
 					Config::set("tty_mode", Config::getB("force_tty"));
 				}
@@ -1622,25 +1537,13 @@ static int optionsMenu(const string& key) {
 
 			//? Category buttons
 			out += Mv::to(y+7, x+4);
-		#ifdef GPU_SUPPORT
 			for (int i = 0; const auto& m : {"general", "cpu", "gpu", "mem", "net", "proc"}) {
-		#else
-			for (int i = 0; const auto& m : {"general", "cpu", "mem", "net", "proc"}) {
-		#endif
 				out += Fx::b + (i == selected_cat
 						? Theme::c("hi_fg") + '[' + Theme::c("title") + m + Theme::c("hi_fg") + ']'
 						: Theme::c("hi_fg") + to_string(i + 1) + Theme::c("title") + m + ' ')
-				#ifdef GPU_SUPPORT
 					+ Mv::r(7);
-				#else
-					+ Mv::r(10);
-				#endif
 
-#if !defined(GPU_SUPPORT)
-				constexpr static auto option_menu_tab_width = 15;
-#else
 				constexpr static auto option_menu_tab_width = 12;
-#endif
 				if (const auto button_name = fmt::format("select_cat_{}", i + 1); not editing and not mouse_mappings.contains(button_name)) {
 					mouse_mappings[button_name] = {
 						.line = y + 6,

@@ -84,24 +84,11 @@ ifneq ($(filter unknown Darwin, $(PLATFORM)),)
 		override PLATFORM := macos
 	endif
 endif
-ifeq ($(shell uname -v | grep ARM64 >/dev/null 2>&1; echo $$?),0)
-	ARCH ?= arm64
-else
-	ARCH ?= $(shell $(CXX) -dumpmachine | cut -d "-" -f 1)
-endif
+ARCH ?= $(shell $(CXX) -dumpmachine | cut -d "-" -f 1)
 
 override PLATFORM_LC := $(shell echo $(PLATFORM) | tr '[:upper:]' '[:lower:]')
 
 #? GPU Support
-ifeq ($(PLATFORM_LC)$(ARCH),linuxx86_64)
-	ifneq ($(STATIC),true)
-		GPU_SUPPORT := true
-		INTEL_GPU_SUPPORT := true
-	endif
-endif
-ifeq ($(PLATFORM_LC)$(ARCH),macosarm64)
-	GPU_SUPPORT := true
-endif
 #? Intel Macs: GPU support comes from the AMD IORegistry collector
 ifeq ($(PLATFORM_LC)$(ARCH),macosx86_64)
 	GPU_SUPPORT := true
@@ -127,22 +114,12 @@ endif
 
 #? Any flags added to TESTFLAGS must not contain whitespace for the testing to work
 override TESTFLAGS := -fexceptions -fstack-clash-protection -fcf-protection
-ifneq ($(PLATFORM) $(ARCH),macos arm64)
-	override TESTFLAGS += -fstack-protector
-endif
+override TESTFLAGS += -fstack-protector
 
 ifeq ($(STATIC),true)
 	ifeq ($(CXX_IS_CLANG),true)
 		ifeq ($(shell $(CXX) -print-target-triple | grep gnu >/dev/null; echo $$?),0)
 $(error $(call red_i,ERROR: $(WHITE)$(CXX) can't statically link glibc))
-		endif
-	endif
-
-	ifeq ($(PLATFORM_LC),$(filter $(PLATFORM_LC),freebsd linux midnightbsd))
-		override ADDFLAGS += -DSTATIC_BUILD -static
-	else
-		ifeq ($(CXX_IS_CLANG),false)
-			override ADDFLAGS += -static-libgcc -static-libstdc++
 		endif
 	endif
 endif
@@ -158,43 +135,11 @@ else
 endif
 
 #? Pull in platform specific source files and get thread count
-ifeq ($(PLATFORM_LC),linux)
-	PLATFORM_DIR := linux
-	THREADS	:= $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
-	SU_GROUP := root
-else ifeq ($(PLATFORM_LC),$(filter $(PLATFORM_LC),freebsd midnightbsd))
-	PLATFORM_DIR := freebsd
-	THREADS	:= $(shell getconf NPROCESSORS_ONLN 2>/dev/null || echo 1)
-	SU_GROUP := wheel
-	override ADDFLAGS += -lm -lkvm -ldevstat
-	ifeq ($(STATIC),true)
-		override ADDFLAGS += -lelf -Wl,--eh-frame-hdr
-	endif
-
- 	ifeq ($(CXX_IS_CLANG),false)
-		override ADDFLAGS += -lstdc++ -Wl,rpath=/usr/local/lib/gcc$(CXX_VERSION_MAJOR)
-	endif
-	export MAKE = gmake
-else ifeq ($(PLATFORM_LC),macos)
+ifeq ($(PLATFORM_LC),macos)
 	PLATFORM_DIR := osx
 	THREADS	:= $(shell sysctl -n hw.ncpu || echo 1)
 	SU_GROUP := wheel
-	override ADDFLAGS += -Wno-format-truncation -framework IOKit -framework CoreFoundation 
-	ifeq ($(ARCH)$(GPU_SUPPORT),arm64true)
-	  override ADDFLAGS += -lIOReport
-	endif
-else ifeq ($(PLATFORM_LC),openbsd)
-	PLATFORM_DIR := openbsd
-	THREADS	:= $(shell sysctl -n hw.ncpu || echo 1)
-	override ADDFLAGS += -lkvm -static-libstdc++
-	export MAKE = gmake
-	SU_GROUP := wheel
-else ifeq ($(PLATFORM_LC),netbsd)
-	PLATFORM_DIR := netbsd
-	THREADS	:= $(shell sysctl -n hw.ncpu || echo 1)
-	override ADDFLAGS += -lkvm -lprop
-	export MAKE = gmake
-	SU_GROUP := wheel
+	override ADDFLAGS += -Wno-format-truncation -framework IOKit -framework CoreFoundation
 else
 $(error $(call red_i,ERROR: $(WHITE)Unsupported platform ($(PLATFORM))))
 endif
@@ -216,9 +161,6 @@ endif
 
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2> /dev/null || true)
 CONFIGURE_COMMAND := $(MAKE) STATIC=$(STATIC)
-ifeq ($(PLATFORM_LC),linux)
-	CONFIGURE_COMMAND +=  GPU_SUPPORT=$(GPU_SUPPORT) RSMI_STATIC=$(RSMI_STATIC)
-endif
 
 #? The Directories, Source, Includes, Objects and Binary
 SRCDIR		:= src
@@ -252,14 +194,7 @@ SOURCES += $(sort $(shell find $(SRCDIR)/$(PLATFORM_DIR) -maxdepth 1 -type f -na
 
 OBJECTS	:= $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
-ifeq ($(GPU_SUPPORT)$(INTEL_GPU_SUPPORT),truetrue)
-	IGT_OBJECTS := $(BUILDDIR)/igt_perf.c.o $(BUILDDIR)/intel_device_info.c.o $(BUILDDIR)/intel_name_lookup_shim.c.o $(BUILDDIR)/intel_gpu_top.c.o
-	OBJECTS += $(IGT_OBJECTS)
-	SHOW_CC_INFO = false
-	CC_VERSION := $(shell $(CC) -dumpfullversion -dumpversion || echo 0)
-else
-	SHOW_CC_INFO = true
-endif
+SHOW_CC_INFO = true
 
 #? Setup percentage progress
 SOURCE_COUNT := $(words $(OBJECTS))
@@ -321,7 +256,6 @@ help:
 	@printf "  clean        Remove built objects\n"
 	@printf "  distclean    Remove built objects and binaries\n"
 	@printf "  install      Install btop++ to \$$PREFIX ($(PREFIX))\n"
-	@printf "  setcap       Set extended capabilities on binary (preferable to setuid)\n"
 	@printf "  setuid       Set installed binary owner/group to \$$SU_USER/\$$SU_GROUP ($(SU_USER)/$(SU_GROUP)) and set SUID bit\n"
 	@printf "  uninstall    Uninstall btop++ from \$$PREFIX\n"
 	@printf "  info         Display information about Environment,compiler and linker flags\n"
@@ -353,13 +287,11 @@ endif
 clean:
 	@$(call red,Removing: $(WHITE)built objects,...)
 	@rm -rf $(BUILDDIR)
-	@test -e lib/rocm_smi_lib/build && cmake --build lib/rocm_smi_lib/build --target clean &> /dev/null || true
 
 #? Clean Objects and Binaries
 distclean: clean
 	@$(call red,Removing: $(WHITE)built binaries,...)
 	@rm -rf $(TARGETDIR)
-	@test -e lib/rocm_smi_lib/build && rm -rf lib/rocm_smi_lib/build || true
 
 install:
 	@$(call green,Installing binary to: $(WHITE)$(DESTDIR)$(PREFIX)/bin/btop)
@@ -372,9 +304,6 @@ install:
 	@mkdir -p $(DESTDIR)$(PREFIX)/share/btop
 	@$(call green,Installing themes to: $(WHITE)$(DESTDIR)$(PREFIX)/share/btop/themes)
 	@cp -pr themes $(DESTDIR)$(PREFIX)/share/btop
-	@$(call green,Installing desktop entry to: ,$(WHITE)$(DESTDIR)$(PREFIX)/share/applications/btop.desktop)
-	@mkdir -p $(DESTDIR)$(PREFIX)/share/applications/
-	@cp -p btop.desktop $(DESTDIR)$(PREFIX)/share/applications/btop.desktop
 	@$(call green,Installing PNG icon to: ,$(WHITE)$(DESTDIR)$(PREFIX)/share/icons/hicolor/48x48/apps/btop.png)
 	@mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/48x48/apps
 	@cp -p Img/icon.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/48x48/apps/btop.png
@@ -395,20 +324,12 @@ setuid:
 	@$(call green,Setting SUID bit)
 	@chmod u+s $(DESTDIR)$(PREFIX)/bin/btop
 
-#? Run setcap on btop for extended capabilities
-setcap:
-	@$(call white,File: $(DESTDIR)$(PREFIX)/bin/btop)
-	@$(call green,Setting capabilities,...)
-	@setcap "cap_perfmon=+ep cap_dac_read_search=+ep" $(DESTDIR)$(PREFIX)/bin/btop
-
 # With 'rm -v' user will see what files (if any) got removed
 uninstall:
 	@$(call red,Removing: ,$(WHITE)$(DESTDIR)$(PREFIX)/bin/btop)
 	@rm -rfv $(DESTDIR)$(PREFIX)/bin/btop
 	@$(call red,Removing: ,$(WHITE)$(DESTDIR)$(PREFIX)/share/btop)
 	@rm -rfv $(DESTDIR)$(PREFIX)/share/btop
-	@$(call red,Removing: ,$(WHITE)$(DESTDIR)$(PREFIX)/share/applications/btop.desktop)
-	@rm -rfv $(DESTDIR)$(PREFIX)/share/applications/btop.desktop
 	@$(call red,Removing: ,$(WHITE)$(DESTDIR)$(PREFIX)/share/icons/hicolor/48x48/apps/btop.png)
 	@rm -rfv $(DESTDIR)$(PREFIX)/share/icons/hicolor/48x48/apps/btop.png
 	@$(call red,Removing: ,$(WHITE)$(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/btop.svg)
@@ -419,36 +340,9 @@ uninstall:
 #? Pull in dependency info for *existing* .o files
 -include $(OBJECTS:.$(OBJEXT)=.$(DEPEXT))
 
-#? Compile rocm_smi
-ifeq ($(GPU_SUPPORT)$(RSMI_STATIC),truetrue)
-	ROCM_DIR ?= lib/rocm_smi_lib
-	ROCM_BUILD_DIR := $(ROCM_DIR)/build
-	ifeq ($(DEBUG),true)
-		BUILD_TYPE := Debug
-	else
-		BUILD_TYPE := Release
-	endif
-.ONESHELL:
-rocm_smi:
-	@$(call green,Building ROCm SMI static library,...,\n)
-	@$(QUIET) || $(call white,Running CMake,...)
-	CXX=$(CXX) cmake -S $(ROCM_DIR) -B $(ROCM_BUILD_DIR) \
-		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
-		-DCMAKE_POLICY_DEFAULT_CMP0069=NEW \
-		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
-		-DBUILD_SHARED_LIBS=OFF $(SUPPRESS) || \
-		{ $(call red,CMake failed$(COMMA) continuing build without statically linking ROCm SMI,...); exit 0; }
-	@$(QUIET) || $(call white,Building and linking,...,\n)
-	@cmake --build $(ROCM_BUILD_DIR) -j -t rocm_smi64 $(SUPPRESS) || \
-		{ $(call red,Make failed$(COMMA) continuing build without statically linking ROCm SMI,...); exit 0; }
-	@$(call green,100% -> $(call file_with_size,$(ROCM_BUILD_DIR)/rocm_smi/librocm_smi64.a))
-	@$(call green,ROCm SMI build complete in ($(WHITE)$(call step_duration,$(TIMESTAMP))$(GREEN)))
-	@$(eval override LDFLAGS += $(ROCM_BUILD_DIR)/rocm_smi/librocm_smi64.a -DRSMI_STATIC) # TODO: this seems to execute every time, no matter if the compilation failed or succeeded
-	@$(eval override CXXFLAGS += -DRSMI_STATIC)
-else
+#? rocm_smi no-op target (order-only prerequisite kept for build rules)
 rocm_smi:
 	@true
-endif
 
 #? Link
 .ONESHELL:
@@ -470,17 +364,6 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT) | rocm_smi directories config.h
 	@$(VERBOSE) || printf "$(CXX) $(CXXFLAGS) $(INC) -MMD -c -o $@ $<\n"
 	@$(CXX) $(CXXFLAGS) $(INC) -MMD -c -o $@ $< || exit 1
 	@$(call green,$$($(PROGRESS))%$(call CUR_LEFT,10)$(call CUR_RIGHT,5)-> $(call file_with_size,$@,$(call CUR_LEFT,100)$(call CUR_RIGHT,38)) $(GREEN)($(WHITE)$(call step_duration,$$TSTAMP)$(GREEN)))
-
-#? Compile intel_gpu_top C sources for Intel GPU support
-.ONESHELL:
-$(BUILDDIR)/%.c.o: $(SRCDIR)/$(PLATFORM_DIR)/intel_gpu_top/%.c | directories
-	@sleep 0.3 2>/dev/null || true
-	@TSTAMP=$$(date +%s 2>/dev/null || echo "0")
-	@$(QUIET) || $(call white,Compiling $<)
-	@$(VERBOSE) || printf "$(CC) $(INC) -c -o $@ $<\n"
-	@$(CC) $(INC) -w -c -o $@ $< || exit 1
-	@$(call green,$$($(PROGRESS))%$(call CUR_LEFT,10)$(call CUR_RIGHT,5)-> $(call file_with_size,$@,$(call CUR_LEFT,100)$(call CUR_RIGHT,38)) $(GREEN)($(WHITE)$(call step_duration,$$TSTAMP)$(GREEN)))
-
 
 #? Non-File Targets
 .PHONY: all config.h msg help pre
