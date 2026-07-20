@@ -102,6 +102,10 @@ endif
 ifeq ($(PLATFORM_LC)$(ARCH),macosarm64)
 	GPU_SUPPORT := true
 endif
+#? Intel Macs: GPU support comes from the AMD IORegistry collector
+ifeq ($(PLATFORM_LC)$(ARCH),macosx86_64)
+	GPU_SUPPORT := true
+endif
 ifneq ($(GPU_SUPPORT),true)
 	GPU_SUPPORT := false
 endif

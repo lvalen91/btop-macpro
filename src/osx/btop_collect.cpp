@@ -207,7 +207,11 @@ namespace Gpu {
 	namespace Rsmi { bool shutdown() { return false; } }
 	namespace Asysfs { bool shutdown() { return false; } }
 
-	//? Apple Silicon GPU data collection via IOReport
+	//? Apple Silicon GPU data collection via IOReport.
+	//? IOReport and IOHID are only declared on arm64 (see the guard at the top of
+	//? this file), so this collector is arm64-only. Intel Macs use AppleAMD and
+	//? get the stubs in the #else branch below.
+#if defined(__arm64__)
 	namespace AppleSilicon {
 		bool initialized = false;
 		unsigned int device_count = 0;
@@ -589,6 +593,20 @@ namespace Gpu {
 		template bool collect<true>(gpu_info*);
 		template bool collect<false>(gpu_info*);
 	} // namespace AppleSilicon
+#else
+	//? Stubs so the shared collect/shutdown dispatch links on Intel Macs.
+	namespace AppleSilicon {
+		bool initialized = false;
+		unsigned int device_count = 0;
+		bool init() { return false; }
+		bool shutdown() { return false; }
+
+		template <bool is_init>
+		bool collect(gpu_info*) { return false; }
+		template bool collect<true>(gpu_info*);
+		template bool collect<false>(gpu_info*);
+	} // namespace AppleSilicon
+#endif
 
 	//? AMD discrete GPU data collection via IOKit IORegistry
 	namespace AppleAMD {
